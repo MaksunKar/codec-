@@ -1,0 +1,694 @@
+#include <iostream>
+#include <cmath>    // для функции tan
+#include <vector>
+using namespace std;
+
+//void Jacobi(const double[3], const double[3], const double[4], const double[4], double&, double[2][4] );
+//void BMatrix(const double[2][4], double[3][8]);
+//void CMatrix(const double&Nu, const double&E, double[3][3]);
+//void XYMatrix(double f, double r, double t, double n, double Lxar, double alfa, double Lyar);
+void KMatrix( int j, int i, int ss, int ee, double f, double r, double t, double n, double Lxar, double alfa, double Lyar, const double& E, const double& Nu, const double ksi[3], const double etta[3], const double x[4], const double y[4], double& detJ, double DK[2][4], double BM[3][8], double CM[3][3], double KMe[8][8]);
+
+int main()
+{
+    double Nu = 0.48;
+    double E = 6;//МПа
+    double ksi[2] = { -0.57, 0.57 };
+    double etta[2] = { -0.57, 0.57 };
+    double x[4] = { 0, 10, 10 , 0 };
+    double y[4] = { 0, 0, 10, 10 };
+    
+
+    double H = 100.0; // Высота объекта
+    double B = 40.0;  // Ширина объекта
+    double Lxar = H / 10.0; // Аппроксимация ???расстояние по Х???
+    double alfa = 45.0; // Угол отклонения стенок от вертикали
+    double t = 12.0; // Кол-во уровней   ???ПОЧЕМУ 12 УРОВНЕЙ???
+    double n = B / Lxar + 1;// Кол-во точек в ряду
+    double r = B / Lxar;// Кол-во КЭ в ряду
+    double f = t - 1;// Кол-во КЭ в столбце
+    double s = r * f;// Кол-во КЭ ВСЕГО
+    double Lyar = H / 11.0;//               ???расстояние по Y???
+   
+
+
+    int ss = 0;
+    int ee = 0;
+    int i = 0;
+    int j = 0;
+
+
+
+    double U[8];
+    U[0] = 0.0;
+    U[1] = 0.0;
+    U[2] = 0.0;
+    U[3] = 0.0;     //это пока не точно
+
+    U[4] = 5.0;
+    U[5] = 0.0;
+    U[6] = 5.0;
+    U[7] = 0.0;
+
+    double detJ = 0.0;
+    double DK[2][4];
+    double BM[3][8];
+    double BMT[8][3];
+    double CM[3][3];
+    double KMe[8][8];
+
+
+
+    //Jacobi(ksi, etta, x, y, detJ, DK);
+    //XYMatrix(f, r, t, n, Lxar, alfa, Lyar);
+   //BMatrix(DK, BM);
+   // CMatrix(Nu,E,CM);
+
+    KMatrix( j, i, ss, ee, f, r, t, n, Lxar, alfa, Lyar, E, Nu, ksi, etta, x, y, detJ, DK, BM, CM, KMe);
+
+
+    double epsilon[3];
+
+    for (int ii = 0; ii != 3; ++ii) {
+        epsilon[ii] = 0;
+        for (int jj = 0; jj != 8; ++jj) {
+            epsilon[ii] += BM[ii][jj] * U[jj];
+        }
+    }
+
+
+    std::cout << "   " << std::endl;
+    std::cout << " epsilon:  " << std::endl;
+    for (int ii = 0; ii != 3; ++ii)
+    {
+        std::cout << epsilon[ii] << "\t";
+        std::cout << std::endl;
+
+    }
+
+
+    double sigma[3];
+
+    for (int ii = 0; ii != 3; ++ii) {
+        sigma[ii] = 0;
+        for (int jj = 0; jj != 3; ++jj) {
+            sigma[ii] += CM[ii][jj] * epsilon[jj];
+        }
+    }
+
+
+    std::cout << "   " << std::endl;
+    std::cout << " sigma:  " << std::endl;
+    for (int ii = 0; ii != 3; ++ii)
+    {
+        std::cout << sigma[ii] << "\t";
+        std::cout << std::endl;
+
+    }
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+void KMatrix( int j, int i, int ss, int ee, double f, double r, double t, double n, double Lxar, double alfa, double Lyar, const double& E, const double& Nu, const double ksi[3], const double etta[3], const double x[4], const double y[4], double& detJ, double DK[2][4], double BM[3][8], double CM[3][3], double KMe[8][8]) {
+
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 8; ++jj)
+            KMe[ii][jj] = 0.0;
+    }
+
+
+    double KMe1[8][3];
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 3; ++jj)
+            KMe1[ii][jj] = 0.0;
+    }
+
+
+    double KMe2[8][8];
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 8; ++jj)
+            KMe2[ii][jj] = 0.0;
+    }
+
+
+
+
+
+    //void XYMatrix(double f, double r, double t, double n, double Lxar, double alfa, double Lyar) 
+
+    double* Delta = new double[t];//Отклонение от вертикали (динамический массив)
+
+
+    for (int ii = 0; ii != t; ii++) {
+        Delta[ii] = t * Lxar * tan(alfa) - (ii + 1) * Lxar * tan(alfa);
+    }
+
+    std::cout << "   " << std::endl;
+    std::cout << " Delta  " << std::endl;
+    for (int ii = 0; ii != t; ++ii)
+    {
+        std::cout << Delta[ii] << "\t";
+        std::cout << std::endl;
+
+    }
+
+
+
+    double** X = (double**)malloc(t * sizeof(double*));   //Формирование двумерной динамической матрицы Х координата
+    for (int ii = 0; ii < t; ii++) {
+
+
+        X[ii] = (double*)malloc(n * sizeof(double));
+
+    }
+
+
+
+    double** Y = (double**)malloc(t * sizeof(double*));   //Формирование двумерной динамической матрицы Y координата
+    for (int ii = 0; ii < t; ii++) {
+
+
+        Y[ii] = (double*)malloc(n * sizeof(double));
+
+    }
+
+
+    double** XYNumb = (double**)malloc(t * sizeof(double*));   //Формирование двумерной динамической матрицы
+    for (int ii = 0; ii < t; ii++) {
+
+
+        XYNumb[ii] = (double*)malloc(n * sizeof(double));
+
+    }
+
+    for (int ii = 0; ii < t; ++ii) {
+        for (int jj = 0; jj < n; ++jj) {
+            XYNumb[ii][jj] = n * ii + jj;
+            X[ii][jj] = Delta[ii] + jj * Lxar;
+            Y[ii][jj] = t * Lyar - (ii + 1) * Lyar;
+
+        }
+    }
+
+
+
+
+
+
+    std::cout << "   " << std::endl;
+    std::cout << "XY numder point  " << std::endl;
+    for (int ii = 0; ii < t; ++ii)
+    {
+        for (int jj = 0; jj < n; ++jj)
+        {
+            std::cout << XYNumb[ii][jj] << "\t";
+
+        }
+        std::cout << std::endl;
+
+    }
+
+    std::cout << "   " << std::endl;
+    std::cout << "X coordinate  " << std::endl;
+    for (int ii = 0; ii < t; ++ii)
+    {
+        for (int jj = 0; jj < n; ++jj)
+        {
+            std::cout << X[ii][jj] << "\t";
+
+        }
+        std::cout << std::endl;
+
+    }
+
+    std::cout << "   " << std::endl;
+    std::cout << "Y coordinate  " << std::endl;
+    for (int ii = 0; ii < t; ++ii)
+    {
+        for (int jj = 0; jj < n; ++jj)
+        {
+            std::cout << Y[ii][jj] << "\t";
+
+        }
+        std::cout << std::endl;
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    double DN[2][4];  //1 - производная по ksi; 2 - производная по etta !!производные функций форм!!
+
+    double Wksi[2] = { 1, 1 };
+    double Wetta[2] = { 1, 1 };
+    double W1;
+    double W2;
+
+
+Zanovoee:
+    for (ee; ee != 2;) {
+    Zanovoss:
+        for (ss; ss != 2;)
+        {
+
+            
+
+
+            
+            //void Jacobi(const double ksi[3], const double etta[3], const double x[4], const double y[4], double& detJ, double DK[2][4]) {
+
+
+
+                // double DXY[2][2];  //1 - производная по ksi; 2 - производная по etta !!производные глобальных координат!!
+
+                 //DXY[0][0] = (1.0 + etta)* x[1] / 4.0 - (1.0 + etta) * x[2] / 4.0 - (1.0 - etta) * x[3] / 4.0 + (1.0 - etta) * x[4] / 4.0;
+                 //DXY[0][1] = (1.0 + etta) * y[1] / 4.0 - (1.0 + etta) * y[2] / 4.0 - (1.0 - etta) * y[3] / 4.0 + (1.0 - etta) * y[4] / 4.0;
+
+                 //DXY[1][0] = (1.0 + ksi) * x[1] / 4.0 + (1.0 - ksi) * x[2] / 4.0 - (1.0 - ksi) * x[3] / 4.0 - (1.0 + ksi) * x[4] / 4.0;
+                 //DXY[1][1] = (1.0 + ksi) * y[1] / 4.0 + (1.0 - ksi) * y[2] / 4.0 - (1.0 - ksi) * y[3] / 4.0 - (1.0 + ksi) * y[4] / 4.0;
+
+
+            W1 = Wksi[ss];
+            W2 = Wetta[ee];
+            DN[0][0] = (1.0 + etta[ee]) / 4.0;
+            DN[0][1] = -(1.0 + etta[ee]) / 4.0;
+            DN[0][2] = -(1.0 - etta[ee]) / 4.0;
+            DN[0][3] = (1.0 - etta[ee]) / 4.0;
+
+            DN[1][0] = (1.0 + ksi[ss]) / 4.0;
+            DN[1][1] = (1.0 - ksi[ss]) / 4.0;
+            DN[1][2] = -(1.0 - ksi[ss]) / 4.0;
+            DN[1][3] = -(1.0 + ksi[ss]) / 4.0;
+
+
+
+            std::cout << "   " << std::endl;
+            std::cout << " DN=  " << std::endl;
+            for (int ii = 0; ii != 2; ++ii)
+            {
+                for (int jj = 0; jj != 4; ++jj)
+                {
+                    std::cout << DN[ii][jj] << "\t";
+                }
+                std::cout << std::endl;
+
+            }
+
+            std::cout << "   " << std::endl;
+            std::cout << " Wksi=  " << std::endl;
+
+
+            std::cout << W1 << "\t";
+
+            std::cout << std::endl;
+
+            std::cout << "   " << std::endl;
+            std::cout << " Wetta=  " << std::endl;
+
+
+            std::cout << W2 << "\t";
+
+            std::cout << std::endl;
+
+
+
+
+
+            goto Podstanovka2;
+
+        }
+    }
+
+
+Podstanovka2:
+
+
+    
+
+
+
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 3; ++jj)
+            KMe1[ii][jj] = 0.0;
+    }
+
+
+
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 8; ++jj)
+            KMe2[ii][jj] = 0.0;
+    }
+
+
+
+    double J[2][2];  //Первый индекс - по какой координате дифференцируем (0 - по ksi; 1 - по etta)
+
+    for (int jj = 0; jj != 2; ++jj)
+        for (int ii = 0; ii != 2; ++ii) {
+            J[jj][ii] = 0.0;
+
+        }
+
+
+
+
+
+
+
+
+
+    for (int jj = 0; jj != 2; ++jj)
+        for (int ii = 0; ii != 4; ++ii) {
+            J[jj][0] += DN[jj][ii] * x[ii];    //Производная по ksi   
+            J[jj][1] += DN[jj][ii] * y[ii];    //Производная по etta   
+
+
+        }
+    std::cout << "   " << std::endl;
+    std::cout << " J=  " << std::endl;
+    for (int ii = 0; ii != 2; ++ii)
+    {
+        for (int jj = 0; jj != 2; ++jj)
+        {
+            std::cout << J[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+
+    }
+
+
+    //**************************
+    //Транспонирование матрицы *
+    // *************************
+    //Вычисление детерминанта
+    detJ = J[0][0] * J[1][1] - J[0][1] * J[1][0];
+    std::cout << " detJ=  " << std::endl;
+    std::cout << detJ << std::endl;
+
+
+
+    double Jinv[2][2];
+
+    for (int ii = 0; ii != 2; ++ii) {
+        for (int jj = 0; jj != 2; ++jj)
+            Jinv[ii][jj] = 0.0;
+    }
+
+    //Алгебраические дополнения, деленные на детерминант
+    Jinv[0][0] = J[1][1] / detJ;
+    Jinv[0][1] = -J[1][0] / detJ;
+    Jinv[1][0] = -J[0][1] / detJ;
+    Jinv[1][1] = J[0][0] / detJ;
+
+
+    std::cout << "   " << std::endl;
+    std::cout << " Jinv=  " << std::endl;
+    for (int ii = 0; ii != 2; ++ii)
+    {
+        for (int jj = 0; jj != 2; ++jj)
+        {
+            std::cout << Jinv[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+
+    }
+
+    for (int ii = 0; ii != 2; ++ii) {
+        for (int jj = 0; jj != 4; ++jj)
+            DK[ii][jj] = 0.0;
+    }
+
+    for (int ii = 0; ii != 2; ++ii)
+        for (int jj = 0; jj != 4; ++jj)
+            for (int ll = 0; ll != 2; ++ll) {
+                DK[ii][jj] += Jinv[ii][ll] * DN[ll][jj];
+            }
+
+
+
+    std::cout << "   " << std::endl;
+    std::cout << " DK=  " << std::endl;
+    for (int ii = 0; ii != 2; ++ii)
+    {
+        for (int jj = 0; jj != 4; ++jj)
+        {
+            std::cout << DK[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+
+    }
+
+
+
+
+
+
+
+    //матрица B
+    //void BMatrix(const double DK[2][4], double BM[3][8]) {
+
+    for (int ii = 0; ii != 3; ++ii)
+        for (int jj = 0; jj != 8; ++jj)
+            BM[ii][jj] = 0.0;
+
+    for (int jj = 0; jj != 4; ++jj) {   //По блокам
+        BM[0][2 * jj] = DK[0][jj];
+        BM[1][2 * jj + 1] = DK[1][jj];
+        BM[2][2 * jj] = DK[0][jj];
+        BM[2][2 * jj + 1] = DK[1][jj];// Это правильно
+    }
+
+    std::cout << "   " << std::endl;
+    std::cout << "BM=  " << std::endl;
+    for (int ii = 0; ii != 3; ++ii)
+    {
+        for (int jj = 0; jj != 8; ++jj)
+        {
+            std::cout << BM[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+    }
+
+
+
+    //матрица B транспонированная
+
+    double BMT[8][3];
+
+    for (int ii = 0; ii != 3; ++ii) {
+        for (int jj = 0; jj != 8; ++jj)
+            BMT[ii][jj] = 0.0;
+    }
+
+    for (int ii = 0; ii != 8; ++ii) {
+        for (int jj = 0; jj != 3; ++jj) {   //По блокам
+            BMT[ii][jj] = BM[jj][ii];
+
+        }
+    }
+    std::cout << "   " << std::endl;
+    std::cout << "BMT=  " << std::endl;
+    for (int ii = 0; ii != 8; ++ii)
+    {
+        for (int jj = 0; jj != 3; ++jj)
+        {
+            std::cout << BMT[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+    }
+
+
+
+
+
+    //матрица C
+    //void CMatrix(const double& Nu, const double& E, double CM[3][3]) {
+
+    double var;
+
+    var = E  / (1 - Nu * Nu);
+
+    CM[0][0] = var;
+    CM[0][1] = var * Nu ;
+    CM[0][2] = 0.0;
+
+    CM[1][0] = var * Nu;
+    CM[1][1] = var;
+    CM[1][2] = 0.0;
+
+    CM[2][0] = 0.0;
+    CM[2][1] = 0.0;
+    CM[2][2] = var * (1 - Nu) / 2;
+
+
+
+
+    //матрица жесткости элемента
+    //void KMatrix(const double& E, const double& Nu, const double& ksi, const double& etta, const double x[4], const double y[4], double KMe[8][8]) {
+
+       //Массовые коэффициенты W
+
+
+
+
+
+
+    //
+    //double gaussPoint[3] = {-0.7, 0.0, 0.7};
+
+
+
+    
+
+    //for (int ii = 0; ii != Nint; ++ii)
+       // for (int jj = 0; jj != Nint; ++jj) {
+
+
+
+    for (int pp = 0; pp != 8; ++pp) {
+        for (int ll = 0; ll != 3; ++ll) {
+            for (int rr = 0; rr != 3; ++rr) {
+
+
+                KMe1[pp][ll] += W1 * W2 * BMT[pp][rr] * CM[rr][ll] * detJ;
+
+            }
+        }
+    }
+   
+    for (int pp = 0; pp != 8; ++pp) {
+        for (int ll = 0; ll != 8; ++ll) {
+            for (int rr = 0; rr != 3; ++rr) {
+
+
+                KMe2[pp][ll] += KMe1[pp][rr] * BM[rr][ll];
+
+            }
+        }
+    }
+    
+    for (int pp = 0; pp != 8; ++pp) {
+        for (int ll = 0; ll != 8; ++ll) {
+           
+
+
+                KMe[pp][ll] += KMe2[pp][ll];
+
+            
+        }
+    }
+
+
+    std::cout << "   " << std::endl;
+    std::cout << "KMe=  " << std::endl;
+    for (int ii = 0; ii != 8; ++ii)
+    {
+        for (int jj = 0; jj != 8; ++jj)
+        {
+            std::cout << KMe[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+    }
+
+    ++i;
+    if (i == 2) {
+
+        goto Next;
+    }
+    ++ss;
+    goto Zanovoss;
+Next:
+    {
+        ss = 0;
+        i = 0;
+        ++j;
+        if (j == 2) {
+
+            goto Exit;
+        }
+        ++ee;
+        goto Zanovoee;
+    }
+
+    //for (ee; ee != 3;) {
+    //    if (i == 3) {
+     //       goto Next;
+     //   }
+     //   else {
+     //       for (ss; ss != 3;) {
+      //          ss++;
+      //          i++;
+       //         goto Zanovoss;
+       //     }
+      //  }
+       // Next:
+        //   ++ee;
+       //    ss = 0;
+         //  i = 0;
+         // goto Zanovoee;// Сюда уже не вернулся
+
+
+
+
+
+
+Exit:
+
+    std::cout << "   " << std::endl;
+    std::cout << "KMeeee=  " << std::endl;
+    for (int ii = 0; ii != 8; ++ii)
+    {
+        for (int jj = 0; jj != 8; ++jj)
+        {
+            std::cout << KMe[ii][jj] << "\t";
+        }
+        std::cout << std::endl;
+    }
+
+
+    return;
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
